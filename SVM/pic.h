@@ -16,11 +16,12 @@ namespace vm
 
         // Hardware Interrupts (interrupt service routines that are called for incoming hardware events)
 
-        isr_type isr_0; // IRQ 0: Timer
+        isr_type isr_0; // IRQ 0: Timer Interrupt
         isr_type isr_1; // IRQ 1: Keyboard
         isr_type isr_2; // IRQ 2: ...TBD
 
         // Software Interrupts (interrupt service routines that are called by executing the 'int' CPU instruction)
+		//isr_3 - software interrupter
 
         isr_type isr_3; // Kernel should decide how to use them
         isr_type isr_4;
