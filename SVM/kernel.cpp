@@ -18,13 +18,13 @@ namespace vm
         std::for_each(executables_paths.begin(), executables_paths.end(), [&](Memory::ram_type &executable) {
             CreateProcess(executable);
         });
-
+	
         if (scheduler == FirstComeFirstServed || scheduler == ShortestJob) {
-            machine.pic.isr_0 = [&]() {
+            machine.pic.isr_0 = [&]() { //timer interrupter
 				// ToDo: Process the timer interrupt for the FCFS or Shortest Job scheduler
 			};
 
-            machine.pic.isr_3 = [&]() {
+            machine.pic.isr_3 = [&]() { //software interrupter
                 // ToDo: Process the first software interrupt for the FCFS or Shortest Job scheduler
 				// Unload the current process
 				processes.pop_front();
@@ -91,22 +91,27 @@ namespace vm
         } else if (scheduler == Priority) {
             machine.pic.isr_0 = [&]() {
 				// ToDo: Process the timer interrupt for the Priority Queue scheduler
-				if (!processes.empty()){
-					std::cout << "Priority sh." << std::endl;
-					processes.front().registers = machine.cpu.registers;
-					Process current_process = processes.front();
-					--processes.front().priority;
-					//reSort(processes);
-					_current_process_index = (_current_process_index + 1) % processes.size();
-					machine.cpu.registers = processes.front().registers;
+				if (!priorities.empty()){
+					priorities.top().registers = machine.cpu.registers;
+					priorities.top().state = Process::Ready;
+					--priorities.top().priority;
+
+					machine.cpu.registers = priorities.top().registers;
+					priorities.top().state = Process::Running;
 				}
 			};
 
             machine.pic.isr_3 = [&]() {
                 // ToDo: Process the first software interrupt for the Priority Queue scheduler
 				// Unload the current process
-				processes.pop_front();
-				if (processes.empty()){
+				priorities.pop();
+				if (!priorities.empty())
+				{
+					machine.cpu.registers = priorities.top().registers;
+					priorities.top().state = Process::Running;
+				}
+				else
+				{
 					machine.Stop();
 				}
             };
@@ -120,8 +125,13 @@ namespace vm
     }
 
     Kernel::~Kernel() {}
-
-    void Kernel::CreateProcess(Memory::ram_type &executable)
+	
+	bool compareSequentialInstructor(Process& a, Process& b)
+	{
+		return a.sequential_instruction_count < b.sequential_instruction_count;
+	}
+    
+	void Kernel::CreateProcess(Memory::ram_type &executable)
 	{
         std::copy(executable.begin(),
 				  executable.end(),
@@ -133,10 +143,18 @@ namespace vm
 
         _last_ram_position += executable.size();
 
-        // ToDo: add the new process to an appropriate data structure
-        processes.push_back(process);
-
-		// ToDo: process the data structure
+		if (scheduler != Priority)
+		{
+			processes.push_back(process);
+			if (scheduler == ShortestJob)
+			{
+				std::sort(processes.begin(), processes.end(), compareSequentialInstructor);
+			}
+		}
+		else
+		{
+			priorities.push(process);
+		}
 
     }
 }
